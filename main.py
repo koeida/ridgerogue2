@@ -13,6 +13,50 @@ world_width = 60
 class Creature:
     pass
 
+def attack(c, t):
+    player_roll = randint(1,20)
+    monster_roll = randint(1, 20)
+    if c.speed + player_roll >= t.speed + monster_roll:
+        # roll for damage against t
+        damage = c.strength + randint(1, 2)
+        t.hp -= damage
+        # Update news with information about the attack
+        news.append("%s hits %s for %d damage" % (c.name, t.name, damage))
+
+    else:
+        news.append("%s misses %s" % (c.name, t.name))
+
+def can_see(c, t):
+
+    if c.x == t.x or c.y == t.y:
+        return True
+    else:
+        return False
+
+def wander(c,t, world_map, tiles):
+    move = randint(1, 4)
+    oldx = c.x
+    oldy = c.y
+    if move == 1:
+        c.y -=1
+    if move == 2:
+        c.y +=1
+    if move == 3:
+        c.x -=1
+    if move == 4:
+        c.x +=1
+    if not walkable(world_map, tiles, c.x, c.y):
+        c.x = oldx
+        c.y = oldy
+    # if c can see player
+    if can_see(c, t):
+        news.append("I can see!!!!")
+        # set target to player
+        c.target = t
+        # set mode to chase
+        c.mode = "chase"
+
+
 def chase(c,t, world_map, tiles):
     oldy = c.y
     oldx = c.x
@@ -26,8 +70,7 @@ def chase(c,t, world_map, tiles):
         c.y -= 1
 
     if c.x == t.x and c.y == t.y:
-        t.hp -= 1
-        news.append("ow")
+        attack(c,t)
         c.x = oldx
         c.y = oldy
 
@@ -71,6 +114,7 @@ def main(screen):
     #initialize colors
     set_color(1, 800, 200, 150)
     set_color(3, 0, 900, 0)
+    set_color(4, 1000, 1000, 0)
 
     inp = 0
 
@@ -79,16 +123,39 @@ def main(screen):
     player.y = 22
     player.color = 1
     player.looks = "@"
-    player.hp = 5
+    player.hp = 7
+    player.speed = 10
+    player.strength = 1
+    player.name = "Mr Gerald Mc Gee"
+    player.target = None
+    player.mode = None
     creatures = [player]
     for x in range(5):
         goblin = Creature()
         goblin.x = randint(0,world_width - 1)
         goblin.y = randint(0,world_height - 1)
-        goblin.looks = "G"
+        goblin.looks = "g"
         goblin.color = 3
         goblin.hp = 2
+        goblin.speed = 9
+        goblin.strength = 0
+        goblin.target = None
+        goblin.mode = "wander"
+        goblin.name = "Gobbo"
         creatures.append(goblin)
+        
+        scorpion = Creature()
+        scorpion.x = randint(0,world_width - 1)
+        scorpion.y = randint(0,world_height - 1)
+        scorpion.looks = "s"
+        scorpion.color = 4
+        scorpion.hp = 2
+        scorpion.speed = 12
+        scorpion.mode = "wander"
+        scorpion.strength = -1
+        scorpion.target = None
+        scorpion.name = "Scorpio"
+        creatures.append(scorpion)
 
     world_map = [[0 for x in range(world_width)] for y in range(world_height)]
 
@@ -118,10 +185,12 @@ def main(screen):
 
 
 
-        goblins = filter(lambda c: c.looks == "G", creatures)
-        for g in goblins:
-            chase(g, player, world_map, tiles)
-
+        enemies = filter(lambda c: c.looks in ["g", "s"], creatures)
+        for g in enemies:
+            if g.mode == "wander":
+                wander(g, player, world_map, tiles)
+            if g.mode == "chase":
+                chase(g, player, world_map, tiles)
         # loop over the creatures list
         for c in creatures:
             # do screen.addstr using the properties of each creature
@@ -161,10 +230,11 @@ def keyboard_input(creatures, inp, player, world_map, tiles):
         player.x = player.x + 1
     for c in creatures:
         if player.x == c.x and c.y == player.y and player != c:
-            creatures.remove(c)
             player.x = oldx
             player.y = oldy
-
+            attack(player, c)
+            if c.hp <= 0:
+                creatures.remove(c)
     if not walkable(world_map, tiles, player.x, player.y):
         player.x = oldx
         player.y = oldy
