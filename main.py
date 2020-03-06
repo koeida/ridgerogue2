@@ -1,14 +1,10 @@
 import curses
 from random import randint
 from math import sqrt
-from copy import copy
+import gglobals
+from display import initialize_colors, draw_screen
+from gglobals import world_width, world_height, KEY_Q
 
-news = []
-
-KEY_Q = 113
-
-world_height = 30
-world_width = 60
 
 class Creature:
     pass
@@ -20,14 +16,13 @@ def attack(c, t):
         # roll for damage against t
         damage = c.strength + randint(1, 2)
         t.hp -= damage
-        # Update news with information about the attack
-        news.append("%s hits %s for %d damage" % (c.name, t.name, damage))
+        # Update gglobals.news with information about the attack
+        gglobals.news.append("%s hits %s for %d damage" % (c.name, t.name, damage))
 
     else:
-        news.append("%s misses %s" % (c.name, t.name))
+        gglobals.news.append("%s misses %s" % (c.name, t.name))
 
 def can_see(c, t):
-
     if c.x == t.x or c.y == t.y:
         return True
     else:
@@ -50,7 +45,7 @@ def wander(c,t, world_map, tiles):
         c.y = oldy
     # if c can see player
     if can_see(c, t):
-        news.append("I can see!!!!")
+        gglobals.news.append("I can see!!!!")
         # set target to player
         c.target = t
         # set mode to chase
@@ -90,10 +85,6 @@ class Tile:
         self.walkable = walkable
         self.tile = tile
 
-def set_color(color_number, r, g, b):
-    curses.init_color(color_number, r, g, b)
-    curses.init_pair(color_number, color_number, curses.COLOR_BLACK)
-
 def on_screen(x,y):
     off_screen = x < 0 or x >= world_width or y < 0 or y >= world_height
     return not off_screen
@@ -115,6 +106,7 @@ def main(screen):
     inp = 0
 
     creatures, player, tiles, world_map = initialize_world()
+    gglobals.news.append("Welcome to RidgeRogue II")
 
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
@@ -130,55 +122,58 @@ def main(screen):
 
         inp = screen.getch()
 
+def plop_mountain(row, start_x, end_x):
+    for x in range(start_x, end_x + 1):
+        row[x] = 1
+
+def make_path(world):
+    start_x = 60
+    gap_width = 6
+    min_gap_width = 5
+    max_gap_width = 60
+    for row in world:
+        start_x += randint(-1, 1)
+        gap_width += randint(-1, 1)
+        if gap_width < min_gap_width:
+            gap_width = min_gap_width
+        if gap_width > max_gap_width:
+            gap_width = max_gap_width
+        plop_mountain(row, 0, start_x)
+        plop_mountain(row, start_x + gap_width + 1, len(row) - 1)
 
 def initialize_world():
     player = make_player()
     creatures = [player]
-    for x in range(5):
-        random_x = randint(0, world_width - 1)
-        random_y = randint(0, world_height - 1)
-        goblin = make_goblin(random_x, random_y)
-        creatures.append(goblin)
-    for x in range(5):
-        random_x = randint(0, world_width - 1)
-        random_y = randint(0, world_height - 1)
-        scorpion = make_scorpion(random_x, random_y)
-        creatures.append(scorpion)
+
     world_map = [[0 for x in range(world_width)] for y in range(world_height)]
     tiles = {0: Tile(".", True),
              1: Tile("#", False)}
+    make_path(world_map)
     make_random_rocks(world_map)
+
+    for x in range(2000):
+        while True:
+            random_x = randint(0, world_width - 1)
+            random_y = randint(0, world_height - 1)
+            t = world_map[random_y][random_x]
+            if t == 0:
+                break
+        goblin = make_goblin(random_x, random_y)
+        creatures.append(goblin)
+    for x in range(2000):
+        while True:
+            random_x = randint(0, world_width - 1)
+            random_y = randint(0, world_height - 1)
+            t = world_map[random_y][random_x]
+            if t == 0:
+                break
+        scorpion = make_scorpion(random_x, random_y)
+        creatures.append(scorpion)
+
+    for x in range(0,len(world_map[0])):
+        if world_map[player.y][x] == 0:
+            player.x = x
     return creatures, player, tiles, world_map
-
-
-def initialize_colors():
-    # initialize colors
-    set_color(1, 800, 200, 150)
-    set_color(3, 0, 900, 0)
-    set_color(4, 1000, 1000, 0)
-
-
-def draw_screen(creatures, player, screen, tiles, world_map):
-    draw_map(screen, tiles, world_map)
-    for c in creatures:
-        # do screen.addstr using the properties of each creature
-        screen.addstr(c.y, c.x, c.looks, curses.color_pair(c.color))
-    draw_news(screen)
-    screen.addstr(world_height, 0, "you have " + str(player.hp) + " health", curses.color_pair(1))
-    screen.refresh()
-
-
-def draw_news(screen):
-    if news != []:
-        n = 0
-
-        n2 = copy(news)
-        n2.reverse()
-        n2 = n2[:5]
-
-        for x in n2:
-            screen.addstr(world_height + 1 + n, 0, x, curses.color_pair(0))
-            n += 1
 
 
 def tick_creatures(creatures, player, tiles, world_map):
@@ -190,16 +185,10 @@ def tick_creatures(creatures, player, tiles, world_map):
             chase(g, player, world_map, tiles)
 
 
-def draw_map(screen, tiles, world_map):
-    for y in range(len(world_map)):
-        for x in range(len(world_map[0])):
-            cur_tile_num = world_map[y][x]
-            cur_tile = tiles[cur_tile_num]
-            screen.addstr(y, x, cur_tile.tile, curses.color_pair(0))
 
 
 def make_random_rocks(world_map):
-    for n in range(10):
+    for n in range(250):
         # Pick a random spot on the map
         x = randint(0, world_width - 1)
         y = randint(0, world_height - 1)
@@ -209,11 +198,11 @@ def make_random_rocks(world_map):
 
 def make_player():
     player = Creature()
-    player.x = 35
-    player.y = 22
+    player.x = 300
+    player.y = 150
     player.color = 1
     player.looks = "@"
-    player.hp = 7
+    player.hp = 15
     player.speed = 10
     player.strength = 1
     player.name = "Mr Gerald Mc Gee"
@@ -224,8 +213,8 @@ def make_player():
 
 def make_scorpion(x,y):
     scorpion = Creature()
-    scorpion.x = randint(0, world_width - 1)
-    scorpion.y = randint(0, world_height - 1)
+    scorpion.x = x
+    scorpion.y = y
     scorpion.looks = "s"
     scorpion.color = 4
     scorpion.hp = 2
@@ -239,8 +228,8 @@ def make_scorpion(x,y):
 
 def make_goblin(x,y):
     goblin = Creature()
-    goblin.x = randint(0, world_width - 1)
-    goblin.y = randint(0, world_height - 1)
+    goblin.x = x
+    goblin.y = y
     goblin.looks = "g"
     goblin.color = 3
     goblin.hp = 2
