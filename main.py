@@ -110,14 +110,104 @@ def walkable(world_map, tiles, x, y):
 
 def main(screen):
     curses.curs_set(False)  # Disable blinking cursor
+    initialize_colors()
 
-    #initialize colors
+    inp = 0
+
+    creatures, player, tiles, world_map = initialize_world()
+
+    while (inp != KEY_Q):  # Quit game if player presses "q"
+        screen.clear()
+
+        keyboard_input(creatures, inp, player, world_map, tiles)
+
+        tick_creatures(creatures, player, tiles, world_map)
+
+        draw_screen(creatures, player, screen, tiles, world_map)
+
+        if player.hp < 1:
+            return
+
+        inp = screen.getch()
+
+
+def initialize_world():
+    player = make_player()
+    creatures = [player]
+    for x in range(5):
+        random_x = randint(0, world_width - 1)
+        random_y = randint(0, world_height - 1)
+        goblin = make_goblin(random_x, random_y)
+        creatures.append(goblin)
+    for x in range(5):
+        random_x = randint(0, world_width - 1)
+        random_y = randint(0, world_height - 1)
+        scorpion = make_scorpion(random_x, random_y)
+        creatures.append(scorpion)
+    world_map = [[0 for x in range(world_width)] for y in range(world_height)]
+    tiles = {0: Tile(".", True),
+             1: Tile("#", False)}
+    make_random_rocks(world_map)
+    return creatures, player, tiles, world_map
+
+
+def initialize_colors():
+    # initialize colors
     set_color(1, 800, 200, 150)
     set_color(3, 0, 900, 0)
     set_color(4, 1000, 1000, 0)
 
-    inp = 0
 
+def draw_screen(creatures, player, screen, tiles, world_map):
+    draw_map(screen, tiles, world_map)
+    for c in creatures:
+        # do screen.addstr using the properties of each creature
+        screen.addstr(c.y, c.x, c.looks, curses.color_pair(c.color))
+    draw_news(screen)
+    screen.addstr(world_height, 0, "you have " + str(player.hp) + " health", curses.color_pair(1))
+    screen.refresh()
+
+
+def draw_news(screen):
+    if news != []:
+        n = 0
+
+        n2 = copy(news)
+        n2.reverse()
+        n2 = n2[:5]
+
+        for x in n2:
+            screen.addstr(world_height + 1 + n, 0, x, curses.color_pair(0))
+            n += 1
+
+
+def tick_creatures(creatures, player, tiles, world_map):
+    enemies = filter(lambda c: c.looks in ["g", "s"], creatures)
+    for g in enemies:
+        if g.mode == "wander":
+            wander(g, player, world_map, tiles)
+        if g.mode == "chase":
+            chase(g, player, world_map, tiles)
+
+
+def draw_map(screen, tiles, world_map):
+    for y in range(len(world_map)):
+        for x in range(len(world_map[0])):
+            cur_tile_num = world_map[y][x]
+            cur_tile = tiles[cur_tile_num]
+            screen.addstr(y, x, cur_tile.tile, curses.color_pair(0))
+
+
+def make_random_rocks(world_map):
+    for n in range(10):
+        # Pick a random spot on the map
+        x = randint(0, world_width - 1)
+        y = randint(0, world_height - 1)
+        # change the tile at that spot on the world map to 1
+        world_map[y][x] = 1
+
+
+def make_player():
     player = Creature()
     player.x = 35
     player.y = 22
@@ -129,92 +219,37 @@ def main(screen):
     player.name = "Mr Gerald Mc Gee"
     player.target = None
     player.mode = None
-    creatures = [player]
-    for x in range(5):
-        goblin = Creature()
-        goblin.x = randint(0,world_width - 1)
-        goblin.y = randint(0,world_height - 1)
-        goblin.looks = "g"
-        goblin.color = 3
-        goblin.hp = 2
-        goblin.speed = 9
-        goblin.strength = 0
-        goblin.target = None
-        goblin.mode = "wander"
-        goblin.name = "Gobbo"
-        creatures.append(goblin)
-        
-        scorpion = Creature()
-        scorpion.x = randint(0,world_width - 1)
-        scorpion.y = randint(0,world_height - 1)
-        scorpion.looks = "s"
-        scorpion.color = 4
-        scorpion.hp = 2
-        scorpion.speed = 12
-        scorpion.mode = "wander"
-        scorpion.strength = -1
-        scorpion.target = None
-        scorpion.name = "Scorpio"
-        creatures.append(scorpion)
-
-    world_map = [[0 for x in range(world_width)] for y in range(world_height)]
-
-    tiles = { 0:  Tile(".",True),
-              1:  Tile("#", False) }
-
-    for n in range(10):
-        # Pick a random spot on the map
-        x = randint(0, world_width - 1)
-        y = randint(0, world_height - 1)
-        # change the tile at that spot on the world map to 1
-        world_map[y][x] = 1
+    return player
 
 
-    while (inp != KEY_Q):  # Quit game if player presses "q"
-        screen.clear()
+def make_scorpion(x,y):
+    scorpion = Creature()
+    scorpion.x = randint(0, world_width - 1)
+    scorpion.y = randint(0, world_height - 1)
+    scorpion.looks = "s"
+    scorpion.color = 4
+    scorpion.hp = 2
+    scorpion.speed = 12
+    scorpion.mode = "wander"
+    scorpion.strength = -1
+    scorpion.target = None
+    scorpion.name = "Scorpio"
+    return scorpion
 
-        keyboard_input(creatures, inp, player, world_map, tiles)
 
-        # Draw the tiles
-        for y in range(len(world_map)):
-            for x in range(len(world_map[0])):
-                cur_tile_num = world_map[y][x]
-                cur_tile = tiles[cur_tile_num]
-                screen.addstr(y, x, cur_tile.tile, curses.color_pair(0))
-
-
-
-
-        enemies = filter(lambda c: c.looks in ["g", "s"], creatures)
-        for g in enemies:
-            if g.mode == "wander":
-                wander(g, player, world_map, tiles)
-            if g.mode == "chase":
-                chase(g, player, world_map, tiles)
-        # loop over the creatures list
-        for c in creatures:
-            # do screen.addstr using the properties of each creature
-            screen.addstr(c.y, c.x, c.looks, curses.color_pair(c.color))
-
-        if news != []:
-            n = 0
-
-            n2 = copy(news)
-            n2.reverse()
-            n2 = n2[:5]
-
-            for x in n2:
-                screen.addstr(world_height + 1 + n, 0, x, curses.color_pair(0))
-                n += 1
-
-        screen.addstr(world_height, 0, "you have " + str(player.hp) + " health", curses.color_pair(1))
-
-        screen.refresh()
-
-        if player.hp < 1:
-            return
-
-        inp = screen.getch()
+def make_goblin(x,y):
+    goblin = Creature()
+    goblin.x = randint(0, world_width - 1)
+    goblin.y = randint(0, world_height - 1)
+    goblin.looks = "g"
+    goblin.color = 3
+    goblin.hp = 2
+    goblin.speed = 9
+    goblin.strength = 0
+    goblin.target = None
+    goblin.mode = "wander"
+    goblin.name = "Gobbo"
+    return goblin
 
 
 def keyboard_input(creatures, inp, player, world_map, tiles):
