@@ -1,10 +1,8 @@
 * Game overview:
-    * Smooth vertical scrolling (and horizontal somewhat)
     * Get to top of mountain
         * Gets rockier (both falling rocks and random boulders around)
         * More enemies, different kinds, more powerful as you ascend
         * Two shops
-            * Monsters have gold
             * Standard stuff at the shops
     * Randomly generated world:
         * Rocks

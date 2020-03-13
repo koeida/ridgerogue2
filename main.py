@@ -5,10 +5,17 @@ import gglobals
 from display import initialize_colors, draw_screen
 from gglobals import world_width, world_height, KEY_Q
 
-
 class Creature:
     pass
 
+class Item:
+    def __init__(self, x, y, looks, name, color, amount=1):
+        self.x = x
+        self.y = y
+        self.looks = looks
+        self.name = name
+        self.color = color
+        self.amount = amount
 def attack(c, t):
     player_roll = randint(1,20)
     monster_roll = randint(1, 20)
@@ -105,17 +112,22 @@ def main(screen):
 
     inp = 0
 
-    creatures, player, tiles, world_map = initialize_world()
+    creatures, player, tiles, world_map, items = initialize_world()
+    sword = Item(player.x - 2, player.y, "$", "money", 1, 5)
+    sword2 = Item(player.x - 1, player.y, "$", "money", 1, 10)
+    items.append(sword)
+    items.append(sword2)
+
     gglobals.news.append("Welcome to RidgeRogue II")
 
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
 
-        keyboard_input(creatures, inp, player, world_map, tiles)
+        keyboard_input(creatures, inp, player, world_map, tiles, items)
 
         tick_creatures(creatures, player, tiles, world_map)
 
-        draw_screen(creatures, player, screen, tiles, world_map)
+        draw_screen(creatures, player, screen, tiles, world_map, items)
 
         if player.hp < 1:
             return
@@ -144,6 +156,7 @@ def make_path(world):
 def initialize_world():
     player = make_player()
     creatures = [player]
+    items = []
 
     world_map = [[0 for x in range(world_width)] for y in range(world_height)]
     tiles = {0: Tile(".", True),
@@ -173,7 +186,7 @@ def initialize_world():
     for x in range(0,len(world_map[0])):
         if world_map[player.y][x] == 0:
             player.x = x
-    return creatures, player, tiles, world_map
+    return creatures, player, tiles, world_map, items
 
 
 def tick_creatures(creatures, player, tiles, world_map):
@@ -183,8 +196,6 @@ def tick_creatures(creatures, player, tiles, world_map):
             wander(g, player, world_map, tiles)
         if g.mode == "chase":
             chase(g, player, world_map, tiles)
-
-
 
 
 def make_random_rocks(world_map):
@@ -208,6 +219,8 @@ def make_player():
     player.name = "Mr Gerald Mc Gee"
     player.target = None
     player.mode = None
+    player.inventory = []
+    player.gold = 0
     return player
 
 
@@ -218,7 +231,7 @@ def make_scorpion(x,y):
     scorpion.looks = "s"
     scorpion.color = 4
     scorpion.hp = 2
-    scorpion.speed = 12
+    scorpion.speed = 11
     scorpion.mode = "wander"
     scorpion.strength = -1
     scorpion.target = None
@@ -241,7 +254,7 @@ def make_goblin(x,y):
     return goblin
 
 
-def keyboard_input(creatures, inp, player, world_map, tiles):
+def keyboard_input(creatures, inp, player, world_map, tiles, items):
     oldy = player.y
     oldx = player.x
     if inp == curses.KEY_DOWN:
@@ -259,9 +272,26 @@ def keyboard_input(creatures, inp, player, world_map, tiles):
             attack(player, c)
             if c.hp <= 0:
                 creatures.remove(c)
+                gold_roll = randint(1, 100)
+                if gold_roll < 50:
+                    amount = randint(1, 2)
+                    gold = Item(c.x, c.y, "$", "money", 4, amount)
+                    items.append(gold)
     if not walkable(world_map, tiles, player.x, player.y):
         player.x = oldx
         player.y = oldy
+
+    for i in items:
+        if player.x == i.x and player.y == i.y:
+            pick_up_item(i, items, player)
+
+
+def pick_up_item(i, items, player):
+    items.remove(i)
+    if i.name == "money":
+        player.gold += i.amount
+    else:
+        player.inventory.append(i)
 
 
 curses.wrapper(main)
