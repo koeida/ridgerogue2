@@ -123,6 +123,11 @@ def main(screen):
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
 
+        b_roll = randint(1, 10)
+        if b_roll < 3:
+            b = make_boulder(player.x, player.y - 30)
+            creatures.append(b)
+
         keyboard_input(creatures, inp, player, world_map, tiles, items)
 
         tick_creatures(creatures, player, tiles, world_map)
@@ -164,7 +169,7 @@ def initialize_world():
     make_path(world_map)
     make_random_rocks(world_map)
 
-    for x in range(2000):
+    for x in range(200):
         while True:
             random_x = randint(0, world_width - 1)
             random_y = randint(0, world_height - 1)
@@ -173,7 +178,7 @@ def initialize_world():
                 break
         goblin = make_goblin(random_x, random_y)
         creatures.append(goblin)
-    for x in range(2000):
+    for x in range(200):
         while True:
             random_x = randint(0, world_width - 1)
             random_y = randint(0, world_height - 1)
@@ -188,7 +193,6 @@ def initialize_world():
             player.x = x
     return creatures, player, tiles, world_map, items
 
-
 def tick_creatures(creatures, player, tiles, world_map):
     enemies = filter(lambda c: c.looks in ["g", "s"], creatures)
     for g in enemies:
@@ -197,7 +201,6 @@ def tick_creatures(creatures, player, tiles, world_map):
         if g.mode == "chase":
             chase(g, player, world_map, tiles)
 
-
 def make_random_rocks(world_map):
     for n in range(250):
         # Pick a random spot on the map
@@ -205,7 +208,6 @@ def make_random_rocks(world_map):
         y = randint(0, world_height - 1)
         # change the tile at that spot on the world map to 1
         world_map[y][x] = 1
-
 
 def make_player():
     player = Creature()
@@ -223,7 +225,6 @@ def make_player():
     player.gold = 0
     return player
 
-
 def make_scorpion(x,y):
     scorpion = Creature()
     scorpion.x = x
@@ -238,7 +239,21 @@ def make_scorpion(x,y):
     scorpion.name = "Scorpio"
     return scorpion
 
+def make_boulder(x, y):
+    boulder = Creature()
+    boulder.x = x
+    boulder.y = y
+    boulder.looks = "o"
+    boulder.color = 3
+    boulder.hp = 15
+    boulder.speed = 20
+    boulder.strength = 15
+    boulder.target = None
+    boulder.mode = "fall"
+    boulder.name = "Big Rock"
+    return boulder
 
+    
 def make_goblin(x,y):
     goblin = Creature()
     goblin.x = x
@@ -252,7 +267,6 @@ def make_goblin(x,y):
     goblin.mode = "wander"
     goblin.name = "Gobbo"
     return goblin
-
 
 def keyboard_input(creatures, inp, player, world_map, tiles, items):
     oldy = player.y
