@@ -16,18 +16,34 @@ class Item:
         self.name = name
         self.color = color
         self.amount = amount
+
 def attack(c, t):
     player_roll = randint(1,20)
     monster_roll = randint(1, 20)
+    result = ""
+    damage = 0
     if c.speed + player_roll >= t.speed + monster_roll:
+
         # roll for damage against t
         damage = c.strength + randint(1, 2)
         t.hp -= damage
         # Update gglobals.news with information about the attack
-        gglobals.news.append("%s hits %s for %d damage" % (c.name, t.name, damage))
+        result = "hit"
+    if c.name == "player" or t.name == "player":
+        if result == "hit":
+            gglobals.news.append("%s hits %s for %d damage" % (c.name, t.name, damage))
+        else:
 
+            gglobals.news.append("%s misses %s" % (c.name, t.name))
     else:
-        gglobals.news.append("%s misses %s" % (c.name, t.name))
+        # deal with this next time: boulders aren't hitting creatures (other than player)
+        # or rather don't seem to be doing damage to them.
+        if result == "hit":
+            stat = "cspeed(%d) + roll(%d) >= tspeed(%d) + roll(%d)" % (c.speed, player_roll, t.speed, monster_roll)
+            gglobals.news.append(stat)
+        else:
+            stat = "cspeed(%d) + roll(%d) < tspeed(%d) + roll(%d)" % (c.speed, player_roll, t.speed, monster_roll)
+            gglobals.news.append(stat)
 
 def can_see(c, t):
     if c.x == t.x or c.y == t.y:
@@ -52,14 +68,13 @@ def wander(c,t, world_map, tiles):
         c.y = oldy
     # if c can see player
     if can_see(c, t):
-        gglobals.news.append("I can see!!!!")
         # set target to player
         c.target = t
         # set mode to chase
         c.mode = "chase"
 
 
-def chase(c,t, world_map, tiles):
+def chase(c,t, world_map, tiles, creatures):
     oldy = c.y
     oldx = c.x
     if c.x > t.x:
@@ -70,6 +85,12 @@ def chase(c,t, world_map, tiles):
         c.y += 1
     if c.y > t.y:
         c.y -= 1
+
+    for c2 in creatures:
+        if (c2.y == c.y and c2.x == c.x) and (c != c2):
+            c.x = oldx
+            c.y = oldy
+            # Attack it?
 
     if c.x == t.x and c.y == t.y:
         attack(c,t)
@@ -125,7 +146,8 @@ def main(screen):
 
         b_roll = randint(1, 10)
         if b_roll < 3:
-            b = make_boulder(player.x, player.y - 30)
+            wobble = randint(-5, 5)
+            b = make_boulder(player.x + wobble, player.y - 30)
             creatures.append(b)
 
         keyboard_input(creatures, inp, player, world_map, tiles, items)
@@ -169,7 +191,7 @@ def initialize_world():
     make_path(world_map)
     make_random_rocks(world_map)
 
-    for x in range(200):
+    for x in range(700):
         while True:
             random_x = randint(0, world_width - 1)
             random_y = randint(0, world_height - 1)
@@ -178,7 +200,7 @@ def initialize_world():
                 break
         goblin = make_goblin(random_x, random_y)
         creatures.append(goblin)
-    for x in range(200):
+    for x in range(700):
         while True:
             random_x = randint(0, world_width - 1)
             random_y = randint(0, world_height - 1)
@@ -203,6 +225,7 @@ def fall(b, world_map, creatures):
         if (c.y == b.y and c.x == b.x) and (c != b):
             # Run the attack function.
             attack(b, c)
+            gglobals.news.append("%s is attacking %s" % (c, b))
             # Put the boulder back where it was
             b.y -= 1
 
@@ -215,7 +238,7 @@ def tick_creatures(creatures, player, tiles, world_map):
         if g.mode == "wander":
             wander(g, player, world_map, tiles)
         if g.mode == "chase":
-            chase(g, player, world_map, tiles)
+            chase(g, player, world_map, tiles, creatures)
         if g.mode == "fall":
             fall(g, world_map, creatures)
 
@@ -229,6 +252,8 @@ def make_random_rocks(world_map):
 
 def make_player():
     player = Creature()
+    player.xp = 0
+    player.level = 0
     player.x = 300
     player.y = 150
     player.color = 1
@@ -236,7 +261,7 @@ def make_player():
     player.hp = 15
     player.speed = 10
     player.strength = 1
-    player.name = "Mr Gerald Mc Gee"
+    player.name = "player"
     player.target = None
     player.mode = None
     player.inventory = []
@@ -245,6 +270,7 @@ def make_player():
 
 def make_scorpion(x,y):
     scorpion = Creature()
+    scorpion.xp = 45
     scorpion.x = x
     scorpion.y = y
     scorpion.looks = "s"
@@ -259,6 +285,7 @@ def make_scorpion(x,y):
 
 def make_boulder(x, y):
     boulder = Creature()
+    boulder.xp = 500
     boulder.x = x
     boulder.y = y
     boulder.looks = "o"
@@ -274,6 +301,7 @@ def make_boulder(x, y):
     
 def make_goblin(x,y):
     goblin = Creature()
+    goblin.xp = 55
     goblin.x = x
     goblin.y = y
     goblin.looks = "g"
@@ -285,6 +313,12 @@ def make_goblin(x,y):
     goblin.mode = "wander"
     goblin.name = "Gobbo"
     return goblin
+
+def get_level_xp(level):
+    if level == 0:
+        return 50
+    else:
+        return get_level_xp(level - 1) + (level * 30)
 
 def keyboard_input(creatures, inp, player, world_map, tiles, items):
     oldy = player.y
@@ -302,8 +336,17 @@ def keyboard_input(creatures, inp, player, world_map, tiles, items):
             player.x = oldx
             player.y = oldy
             attack(player, c)
+            # This code shouldn't be here
             if c.hp <= 0:
                 creatures.remove(c)
+                player.xp += c.xp
+
+                if player.xp > get_level_xp(player.level):
+                    player.level += 1
+                    # actually level up
+                    player.hp += 3
+                    player.strength += 1
+                    player.speed += 1
                 gold_roll = randint(1, 100)
                 if gold_roll < 50:
                     amount = randint(1, 2)
@@ -324,6 +367,5 @@ def pick_up_item(i, items, player):
         player.gold += i.amount
     else:
         player.inventory.append(i)
-
 
 curses.wrapper(main)

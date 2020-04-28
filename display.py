@@ -47,7 +47,7 @@ def draw_news(screen):
         n2 = n2[:5]
 
         for x in n2:
-            screen.addstr(gglobals.window_height + 2 + n, 0, x, curses.color_pair(0))
+            screen.addstr(gglobals.window_height + 3 + n, 0, x, curses.color_pair(0))
             n += 1
 
 def draw_screen(creatures, player, screen, tiles, world_map, items):
@@ -59,8 +59,11 @@ def draw_screen(creatures, player, screen, tiles, world_map, items):
         draw_object(i, screen, start_x, start_y)
     draw_news(screen)
     draw_inventory(player.inventory, screen)
-    screen.addstr(gglobals.window_height, 0, "you have " + str(player.hp) + " health", curses.color_pair(1))
-    screen.addstr(gglobals.window_height + 1, 0, "you have " + str(player.gold) + " gold", curses.color_pair(3))
+    status_line = "%d hp|%d xp|%d gp|%dl" % (player.hp, player.xp, player.gold, player.level)
+    screen.addstr(gglobals.window_height + 1, 0, status_line, curses.color_pair(3))
+    #screen.addstr(gglobals.window_height + 2, 0, "you have " + str(player.xp) + " XP", curses.color_pair(3))
+    #screen.addstr(gglobals.window_height, 0, "you have " + str(player.hp) + " health", curses.color_pair(1))
+    #screen.addstr(gglobals.window_height + 1, 0, "you have " + str(player.gold) + " gold", curses.color_pair(3))
     screen.refresh()
 
 
