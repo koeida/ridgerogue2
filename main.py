@@ -193,13 +193,31 @@ def initialize_world():
             player.x = x
     return creatures, player, tiles, world_map, items
 
+
+def fall(b, world_map, creatures):
+    # Move the boulder down
+    b.y += 1
+    # Loop over all creatures
+    for c in creatures:
+        # If the creature and the boulder are in the same spot
+        if (c.y == b.y and c.x == b.x) and (c != b):
+            # Run the attack function.
+            attack(b, c)
+            # Put the boulder back where it was
+            b.y -= 1
+
+
+
+
 def tick_creatures(creatures, player, tiles, world_map):
-    enemies = filter(lambda c: c.looks in ["g", "s"], creatures)
+    enemies = filter(lambda c: c.looks in ["g", "s", "o"], creatures)
     for g in enemies:
         if g.mode == "wander":
             wander(g, player, world_map, tiles)
         if g.mode == "chase":
             chase(g, player, world_map, tiles)
+        if g.mode == "fall":
+            fall(g, world_map, creatures)
 
 def make_random_rocks(world_map):
     for n in range(250):

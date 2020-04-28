@@ -5,7 +5,6 @@
         * Two shops
             * Standard stuff at the shops
     * Randomly generated world:
-        * Rocks
         * Enemies
         * Caves (these pop to a different screen)
                * Also smooth scrolling
