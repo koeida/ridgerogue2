@@ -46,7 +46,7 @@ def attack(c, t):
             gglobals.news.append(stat)
 
 def can_see(c, t):
-    if c.x == t.x or c.y == t.y:
+    if distance(c, t) < 13:
         return True
     else:
         return False
@@ -88,14 +88,10 @@ def chase(c,t, world_map, tiles, creatures, items):
 
     for c2 in creatures:
         if (c2.y == c.y and c2.x == c.x) and (c != c2):
+            if c.x == t.x and c.y == t.y:
+                attack(c, t)
             c.x = oldx
             c.y = oldy
-            # Attack it?
-
-    if c.x == t.x and c.y == t.y:
-        attack(c,t)
-        c.x = oldx
-        c.y = oldy
 
     if not walkable(world_map, tiles, c.x, c.y):
         c.x = oldx
@@ -127,6 +123,20 @@ def walkable(world_map, tiles, x, y):
 
     return tile.walkable
 
+
+# Spawn a creature near the player at an appropriate difficulty level
+def spawn_monster(creatures, player, world_map, tiles):
+    spawn_roll = randint(1, 2)
+    # Pick a random valid spot near the player but not visible by the player
+    x, y = random_valid_spot(world_map, player, player.y - 75, player.y + 75)
+    # Make a creature at that spot
+    c = make_goblin(x, y)
+    if spawn_roll == 1:
+        c = make_scorpion(x, y)
+    # Add it to the creature list
+    creatures.append(c)
+    pass
+
 def main(screen):
     curses.curs_set(False)  # Disable blinking cursor
     initialize_colors()
@@ -134,15 +144,15 @@ def main(screen):
     inp = 0
 
     creatures, player, tiles, world_map, items = initialize_world()
-    sword = Item(player.x - 2, player.y, "$", "money", 1, 5)
-    sword2 = Item(player.x - 1, player.y, "$", "money", 1, 10)
-    items.append(sword)
-    items.append(sword2)
 
     gglobals.news.append("Welcome to RidgeRogue II")
 
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
+
+        spawn_roll = randint(1, 4)
+        if spawn_roll == 3 and len(creatures) <= 40:
+            spawn_monster(creatures, player, world_map, tiles)
 
         b_roll = randint(1, 10)
         if b_roll < 3:
@@ -183,24 +193,11 @@ def make_path(world):
         plop_mountain(row, 0, start_x)
         plop_mountain(row, start_x + gap_width + 1, len(row) - 1)
 
-def initialize_world():
-    player = make_player()
-    creatures = [player]
-    items = []
-
-    world_map = [[0 for x in range(world_width)] for y in range(world_height)]
-    tiles = {0: Tile(".", True),
-             1: Tile("#", False)}
-    make_path(world_map)
-    make_random_rocks(world_map)
-
+def old_spawn_code():
+    world_map = []
+    creatures = None
     for x in range(700):
-        while True:
-            random_x = randint(0, world_width - 1)
-            random_y = randint(0, world_height - 1)
-            t = world_map[random_y][random_x]
-            if t == 0:
-                break
+        random_x, random_y = random_valid_spot(world_map)
         goblin = make_goblin(random_x, random_y)
         creatures.append(goblin)
     for x in range(700):
@@ -212,6 +209,32 @@ def initialize_world():
                 break
         scorpion = make_scorpion(random_x, random_y)
         creatures.append(scorpion)
+
+
+def random_valid_spot(world_map, player, min_y, max_y):
+    while True:
+        random_x = randint(0, world_width - 1)
+        random_y = randint(min_y, max_y)
+        t = world_map[random_y][random_x]
+        dummy = Creature()
+        dummy.x = random_x
+        dummy.y = random_y
+
+        if t == 0 and distance(dummy, player) > 30:
+            break
+    return random_x, random_y
+
+
+def initialize_world():
+    player = make_player()
+    creatures = [player]
+    items = []
+
+    world_map = [[0 for x in range(world_width)] for y in range(world_height)]
+    tiles = {0: Tile(".", True),
+             1: Tile("#", False)}
+    make_path(world_map)
+    make_random_rocks(world_map)
 
     for x in range(0,len(world_map[0])):
         if world_map[player.y][x] == 0:
@@ -261,6 +284,7 @@ def make_player():
     player.color = 1
     player.looks = "@"
     player.hp = 15
+    player.maxhp = player.hp + 10
     player.speed = 10
     player.strength = 1
     player.name = "player"
@@ -272,15 +296,15 @@ def make_player():
 
 def make_scorpion(x,y):
     scorpion = Creature()
-    scorpion.xp = 45
+    scorpion.xp = 40
     scorpion.x = x
     scorpion.y = y
     scorpion.looks = "s"
     scorpion.color = 4
-    scorpion.hp = 2
-    scorpion.speed = 11
+    scorpion.hp = 4
+    scorpion.speed = 13
     scorpion.mode = "wander"
-    scorpion.strength = -1
+    scorpion.strength = 0
     scorpion.target = None
     scorpion.name = "Scorpio"
     return scorpion
@@ -303,14 +327,14 @@ def make_boulder(x, y):
     
 def make_goblin(x,y):
     goblin = Creature()
-    goblin.xp = 55
+    goblin.xp = 25
     goblin.x = x
     goblin.y = y
     goblin.looks = "g"
     goblin.color = 3
-    goblin.hp = 2
-    goblin.speed = 9
-    goblin.strength = 0
+    goblin.hp = 5
+    goblin.speed = 11
+    goblin.strength = 1
     goblin.target = None
     goblin.mode = "wander"
     goblin.name = "Gobbo"
@@ -320,7 +344,7 @@ def get_level_xp(level):
     if level == 0:
         return 50
     else:
-        return get_level_xp(level - 1) + (level * 30)
+        return get_level_xp(level - 1) + (level * 40)
 
 def die(c, creatures, items):
     creatures.remove(c)
@@ -356,7 +380,7 @@ def keyboard_input(creatures, inp, player, world_map, tiles, items):
                 if player.xp > get_level_xp(player.level):
                     player.level += 1
                     # actually level up
-                    player.hp += 3
+                    player.maxhp += 5
                     player.strength += 1
                     player.speed += 1
     if not walkable(world_map, tiles, player.x, player.y):

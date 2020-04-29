@@ -59,7 +59,7 @@ def draw_screen(creatures, player, screen, tiles, world_map, items):
         draw_object(i, screen, start_x, start_y)
     draw_news(screen)
     draw_inventory(player.inventory, screen)
-    status_line = "%d hp|%d xp|%d gp|%dl" % (player.hp, player.xp, player.gold, player.level)
+    status_line = "%d/%d hp|%d xp|%d gp|%dl" % (player.hp, player.maxhp, player.xp, player.gold, player.level)
     screen.addstr(gglobals.window_height + 1, 0, status_line, curses.color_pair(3))
     #screen.addstr(gglobals.window_height + 2, 0, "you have " + str(player.xp) + " XP", curses.color_pair(3))
     #screen.addstr(gglobals.window_height, 0, "you have " + str(player.hp) + " health", curses.color_pair(1))
