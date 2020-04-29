@@ -74,7 +74,7 @@ def wander(c,t, world_map, tiles):
         c.mode = "chase"
 
 
-def chase(c,t, world_map, tiles, creatures):
+def chase(c,t, world_map, tiles, creatures, items):
     oldy = c.y
     oldx = c.x
     if c.x > t.x:
@@ -152,7 +152,10 @@ def main(screen):
 
         keyboard_input(creatures, inp, player, world_map, tiles, items)
 
-        tick_creatures(creatures, player, tiles, world_map)
+        tick_creatures(creatures, player, tiles, world_map, items)
+        for c in creatures:
+            if c.hp <= 0:
+                die(c, creatures, items)
 
         draw_screen(creatures, player, screen, tiles, world_map, items)
 
@@ -216,7 +219,7 @@ def initialize_world():
     return creatures, player, tiles, world_map, items
 
 
-def fall(b, world_map, creatures):
+def fall(b, world_map, creatures, items):
     # Move the boulder down
     b.y += 1
     # Loop over all creatures
@@ -225,22 +228,21 @@ def fall(b, world_map, creatures):
         if (c.y == b.y and c.x == b.x) and (c != b):
             # Run the attack function.
             attack(b, c)
-            gglobals.news.append("%s is attacking %s" % (c, b))
             # Put the boulder back where it was
             b.y -= 1
 
 
 
 
-def tick_creatures(creatures, player, tiles, world_map):
-    enemies = filter(lambda c: c.looks in ["g", "s", "o"], creatures)
+def tick_creatures(creatures, player, tiles, world_map, items):
+    enemies = filter(lambda c: c.looks in ["g", "s", "o"] and c.hp > 0, creatures)
     for g in enemies:
         if g.mode == "wander":
             wander(g, player, world_map, tiles)
         if g.mode == "chase":
-            chase(g, player, world_map, tiles, creatures)
+            chase(g, player, world_map, tiles, creatures, items)
         if g.mode == "fall":
-            fall(g, world_map, creatures)
+            fall(g, world_map, creatures, items)
 
 def make_random_rocks(world_map):
     for n in range(250):
@@ -320,6 +322,14 @@ def get_level_xp(level):
     else:
         return get_level_xp(level - 1) + (level * 30)
 
+def die(c, creatures, items):
+    creatures.remove(c)
+    gold_roll = randint(1, 100)
+    if gold_roll < 50:
+        amount = randint(1, 2)
+        gold = Item(c.x, c.y, "$", "money", 4, amount)
+        items.append(gold)
+
 def keyboard_input(creatures, inp, player, world_map, tiles, items):
     oldy = player.y
     oldx = player.x
@@ -337,8 +347,10 @@ def keyboard_input(creatures, inp, player, world_map, tiles, items):
             player.y = oldy
             attack(player, c)
             # This code shouldn't be here
+            # It really really shouldnt be here! it's causing enemies not to die
+            # when hit by boulders
+            # fill in the "die" function above
             if c.hp <= 0:
-                creatures.remove(c)
                 player.xp += c.xp
 
                 if player.xp > get_level_xp(player.level):
@@ -347,11 +359,6 @@ def keyboard_input(creatures, inp, player, world_map, tiles, items):
                     player.hp += 3
                     player.strength += 1
                     player.speed += 1
-                gold_roll = randint(1, 100)
-                if gold_roll < 50:
-                    amount = randint(1, 2)
-                    gold = Item(c.x, c.y, "$", "money", 4, amount)
-                    items.append(gold)
     if not walkable(world_map, tiles, player.x, player.y):
         player.x = oldx
         player.y = oldy
