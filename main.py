@@ -1,15 +1,17 @@
 import curses
-from random import randint
+from random import randint, choice
 from math import sqrt
 import gglobals
 from display import initialize_colors, draw_screen
 from gglobals import world_width, world_height, KEY_Q
 
+MAX_HEALTH_TIMER = 13
+
 class Creature:
     pass
 
 class Item:
-    def __init__(self, x, y, looks, name, color, amount=1):
+    def __init__(self, x, y, looks, name, color, amount = 1):
         self.x = x
         self.y = y
         self.looks = looks
@@ -137,9 +139,19 @@ def spawn_monster(creatures, player, world_map, tiles):
     creatures.append(c)
     pass
 
+
+def limit_hp(player):
+    if player.hp > player.maxhp:
+        player.hp = player.maxhp
+
+
+
 def main(screen):
     curses.curs_set(False)  # Disable blinking cursor
     initialize_colors()
+
+    health_timer = MAX_HEALTH_TIMER
+
 
     inp = 0
 
@@ -150,8 +162,14 @@ def main(screen):
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
 
+        limit_hp(player)
+
+        health_timer -= 1
+        if health_timer == 0:
+            health_timer = MAX_HEALTH_TIMER
+            player.hp += 1
         spawn_roll = randint(1, 4)
-        if spawn_roll == 3 and len(creatures) <= 40:
+        if spawn_roll == 3 and len(creatures) <= 80:
             spawn_monster(creatures, player, world_map, tiles)
 
         b_roll = randint(1, 10)
@@ -229,7 +247,6 @@ def initialize_world():
     player = make_player()
     creatures = [player]
     items = []
-
     world_map = [[0 for x in range(world_width)] for y in range(world_height)]
     tiles = {0: Tile(".", True),
              1: Tile("#", False)}
@@ -239,6 +256,8 @@ def initialize_world():
     for x in range(0,len(world_map[0])):
         if world_map[player.y][x] == 0:
             player.x = x
+    health_potion = Item(player.x - 1, player.y, "8", "Bubbly dark potion", 4, 0)
+    items.append(health_potion)
     return creatures, player, tiles, world_map, items
 
 
@@ -348,11 +367,30 @@ def get_level_xp(level):
 
 def die(c, creatures, items):
     creatures.remove(c)
-    gold_roll = randint(1, 100)
-    if gold_roll < 50:
+    item_roll = randint(1, 100)
+    if item_roll < 50:
         amount = randint(1, 2)
+        which_item = amount
         gold = Item(c.x, c.y, "$", "money", 4, amount)
-        items.append(gold)
+        potion = Item(c.x, c.y, "8", "Bubbly dark potion", 2, 0)
+
+        if which_item == 1:
+            items.append(gold)
+        if which_item == 2:
+            items.append(potion)
+
+
+def ord_to_number(inp):
+    return inp - 48
+
+def use_item(i, player):
+    if i.name == "Bubbly dark potion":
+        player.hp += 5
+    elif i.name == "Crispy bright potion":
+        player.hp -= 1000
+
+
+
 
 def keyboard_input(creatures, inp, player, world_map, tiles, items):
     oldy = player.y
@@ -365,6 +403,12 @@ def keyboard_input(creatures, inp, player, world_map, tiles, items):
         player.x = player.x - 1
     elif inp == curses.KEY_RIGHT:
         player.x = player.x + 1
+    elif ord_to_number(inp) in list(range(10)): #player presses a number
+        number_pressed = ord_to_number(inp)
+        i = player.inventory.pop(number_pressed)
+        use_item(i, player)
+
+
     for c in creatures:
         if player.x == c.x and c.y == player.y and player != c:
             player.x = oldx

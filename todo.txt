@@ -2,7 +2,6 @@
     * Get to top of mountain
         * Gets rockier (both falling rocks and random boulders around)
         * More enemies, different kinds, more powerful as you ascend
-        * Gaining levels
         * Random items
         * Two shops
             * Standard stuff at the shops
