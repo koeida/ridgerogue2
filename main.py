@@ -7,6 +7,14 @@ from gglobals import world_width, world_height, KEY_Q
 
 MAX_HEALTH_TIMER = 13
 
+
+
+def first(f,l):
+    for e in l:
+        if f(e):
+            return e
+    return None
+
 class Creature:
     pass
 
@@ -35,17 +43,8 @@ def attack(c, t):
         if result == "hit":
             gglobals.news.append("%s hits %s for %d damage" % (c.name, t.name, damage))
         else:
-
             gglobals.news.append("%s misses %s" % (c.name, t.name))
-    else:
-        # deal with this next time: boulders aren't hitting creatures (other than player)
-        # or rather don't seem to be doing damage to them.
-        if result == "hit":
-            stat = "cspeed(%d) + roll(%d) >= tspeed(%d) + roll(%d)" % (c.speed, player_roll, t.speed, monster_roll)
-            gglobals.news.append(stat)
-        else:
-            stat = "cspeed(%d) + roll(%d) < tspeed(%d) + roll(%d)" % (c.speed, player_roll, t.speed, monster_roll)
-            gglobals.news.append(stat)
+
 
 def can_see(c, t):
     if distance(c, t) < 13:
@@ -155,9 +154,11 @@ def main(screen):
 
     inp = 0
 
-    creatures, player, tiles, world_map, items = initialize_world()
+    creatures, player, tiles, world_map, items, caves = initialize_world()
+
 
     gglobals.news.append("Welcome to RidgeRogue II")
+    gglobals.news.append("%d" % len(caves))
 
     while (inp != KEY_Q):  # Quit game if player presses "q"
         screen.clear()
@@ -179,6 +180,19 @@ def main(screen):
             creatures.append(b)
 
         keyboard_input(creatures, inp, player, world_map, tiles, items)
+        # if player is standing on a cave
+        if world_map[player.y][player.x] == 2:
+            # get cave map corresponding to that coordinate
+            cave = first(lambda c: c[0][0] == player.x and c[0][1] == player.y, caves)
+            if cave is not None:
+                world_map = make_cave()#cave[1]
+                player.x = 500
+                player.y = 500
+                creatures = [player]
+                items = []
+            else:
+                gglobals.news.append("None!")
+
 
         tick_creatures(creatures, player, tiles, world_map, items)
         for c in creatures:
@@ -195,6 +209,38 @@ def main(screen):
 def plop_mountain(row, start_x, end_x):
     for x in range(start_x, end_x + 1):
         row[x] = 1
+
+def is_touching_path(world_map, x, y):
+    try:
+    # Get the value at x - 1, y
+        left_value = world_map[y][x - 1]
+        right_value = world_map[y][x + 1]
+        top_value = world_map[y - 1][x]
+        bottom_value = world_map[y + 1][x]
+        current_value = world_map[y][x]
+    except:
+        return False
+    if current_value == 1 and 0 in [left_value, right_value, top_value, bottom_value]:
+        return True
+    else:
+        return False
+
+def plop_caves(world_map, num_caves):
+    valid_caves = []
+    for y in range(len(world_map)):
+        for x in range(len(world_map[0])):
+            if is_touching_path(world_map, x,y):
+                valid_caves.append((x,y))
+
+    actual_caves = []
+    for x in range(num_caves):
+        cave_x, cave_y = choice(valid_caves)
+        world_map[cave_y][cave_x] = 2
+        actual_caves.append((cave_x,cave_y))
+    return actual_caves
+
+
+
 
 def make_path(world):
     start_x = 60
@@ -242,6 +288,9 @@ def random_valid_spot(world_map, player, min_y, max_y):
             break
     return random_x, random_y
 
+def make_cave():
+    cave = [[choice([0,0,0,0,0,0,0,0,0,1]) for x in range(1000)] for y in range(1000)]
+    return cave
 
 def initialize_world():
     player = make_player()
@@ -249,16 +298,19 @@ def initialize_world():
     items = []
     world_map = [[0 for x in range(world_width)] for y in range(world_height)]
     tiles = {0: Tile(".", True),
-             1: Tile("#", False)}
+             1: Tile("#", False),
+             2: Tile("0", True)}
     make_path(world_map)
     make_random_rocks(world_map)
+    caves = plop_caves(world_map, 1000)
+    caves = list(map(lambda c: (c, None), caves))
 
     for x in range(0,len(world_map[0])):
         if world_map[player.y][x] == 0:
             player.x = x
     health_potion = Item(player.x - 1, player.y, "8", "Bubbly dark potion", 4, 0)
     items.append(health_potion)
-    return creatures, player, tiles, world_map, items
+    return creatures, player, tiles, world_map, items, caves
 
 
 def fall(b, world_map, creatures, items):
@@ -405,10 +457,9 @@ def keyboard_input(creatures, inp, player, world_map, tiles, items):
         player.x = player.x + 1
     elif ord_to_number(inp) in list(range(10)): #player presses a number
         number_pressed = ord_to_number(inp)
-        i = player.inventory.pop(number_pressed)
-        use_item(i, player)
-
-
+        if number_pressed <= len(player.inventory):
+            i = player.inventory.pop(number_pressed - 1)
+            use_item(i, player)
     for c in creatures:
         if player.x == c.x and c.y == player.y and player != c:
             player.x = oldx
