@@ -19,9 +19,10 @@ def draw_map(screen, tiles, world_map, middle_x, middle_y, window_width, window_
     end_x, end_y, start_x, start_y = get_window(middle_x, middle_y)
     for y in range(start_y, end_y):
         for x in range(start_x, end_x):
-            cur_tile_num = world_map[y][x]
-            cur_tile = tiles[cur_tile_num]
-            screen.addstr(y - start_y, x - start_x, cur_tile.tile, curses.color_pair(0))
+            if y >= 0 and y < len(world_map) and x >= 0 and x < len(world_map[0]):
+                cur_tile_num = world_map[y][x]
+                cur_tile = tiles[cur_tile_num]
+                screen.addstr(y - start_y, x - start_x, cur_tile.tile, curses.color_pair(0))
 
 
 def get_window(middle_x, middle_y):

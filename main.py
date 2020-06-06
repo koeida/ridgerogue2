@@ -4,6 +4,7 @@ from math import sqrt
 import gglobals
 from display import initialize_colors, draw_screen
 from gglobals import world_width, world_height, KEY_Q
+from cave import grow_cave
 
 MAX_HEALTH_TIMER = 13
 
@@ -111,8 +112,8 @@ class Tile:
         self.tile = tile
 
 def on_screen(x,y):
-    off_screen = x < 0 or x >= world_width or y < 0 or y >= world_height
-    return not off_screen
+    return x >= 0 and x < world_width and y >= 0 and y < world_height
+
 
 def walkable(world_map, tiles, x, y):
     if not on_screen(x, y):
@@ -171,13 +172,14 @@ def main(screen):
             player.hp += 1
         spawn_roll = randint(1, 4)
         if spawn_roll == 3 and len(creatures) <= 80:
-            spawn_monster(creatures, player, world_map, tiles)
+            pass
+            #spawn_monster(creatures, player, world_map, tiles)
 
         b_roll = randint(1, 10)
         if b_roll < 3:
             wobble = randint(-5, 5)
             b = make_boulder(player.x + wobble, player.y - 30)
-            creatures.append(b)
+            #creatures.append(b)
 
         keyboard_input(creatures, inp, player, world_map, tiles, items)
         # if player is standing on a cave
@@ -186,8 +188,17 @@ def main(screen):
             cave = first(lambda c: c[0][0] == player.x and c[0][1] == player.y, caves)
             if cave is not None:
                 world_map = make_cave()#cave[1]
-                player.x = 500
-                player.y = 500
+                cave_width = len(world_map[0])
+                cave_height = len(world_map)
+                rx = 75
+                ry = 75
+                # while rx and ry are on a cave tile
+                while world_map[ry][rx] == 1:
+                    # generate a random rx and ry
+                    rx = randint(0, cave_width)
+                    ry = randint(0, cave_height)
+                player.x = rx
+                player.y = ry
                 creatures = [player]
                 items = []
             else:
@@ -289,8 +300,9 @@ def random_valid_spot(world_map, player, min_y, max_y):
     return random_x, random_y
 
 def make_cave():
-    cave = [[choice([0,0,0,0,0,0,0,0,0,1]) for x in range(1000)] for y in range(1000)]
-    return cave
+    return grow_cave(150, 150, 1750, 100, death_rate=2, cave_tile=1, empty_tile=0)
+    #cave = [[choice([0,0,0,0,0,0,0,0,0,1]) for x in range(1000)] for y in range(1000)]
+    #return cave
 
 def initialize_world():
     player = make_player()

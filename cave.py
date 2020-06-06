@@ -81,7 +81,7 @@ def grow_cave(width, height, num_diggers, num_cycles, death_rate=1, cave_tile="#
     return cave
 
 
-cave = grow_cave(80, 300, 1750, 100, death_rate=2)
-for row in cave:
-    row = "".join(row)
-    print(row)
+#cave = grow_cave(80, 300, 1750, 100, death_rate=2)
+#for row in cave:
+#    row = "".join(row)
+#    print(row)
